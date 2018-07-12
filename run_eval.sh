@@ -1,1 +1,1 @@
-python evaluate.py  --model_path ./LOGS_BU/log32/model.ckpt --dump_dir ./LOGS_BU/log32/dump_votes20 --num_votes 20
+python evaluate.py  --model_path ./log_NoAug/model-210.ckpt --dump_dir ./log_NoAug/dump_votes10 --num_votes 10

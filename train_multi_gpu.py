@@ -37,8 +37,8 @@ parser.add_argument('--optimizer', default='adam', help='adam or momentum [defau
 parser.add_argument('--decay_step', type=int, default=200000, help='Decay step for lr decay [default: 200000]')
 parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.7]')
 parser.add_argument('--normal', action='store_true', help='Whether to use normal information')
+parser.add_argument('--aug', type=str, default='all', help='aug types')
 FLAGS = parser.parse_args()
-
 
 EPOCH_CNT = 0
 
@@ -254,7 +254,7 @@ def train():
 
             # Save the variables to disk.
             if epoch % 10 == 0:
-                save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
+                save_path = saver.save(sess, os.path.join(LOG_DIR, "model-%d.ckpt"%(epoch)))
                 log_string("Model saved in file: %s" % save_path)
 
 
@@ -273,7 +273,8 @@ def train_one_epoch(sess, ops, train_writer):
     loss_sum = 0
     batch_idx = 0
     while TRAIN_DATASET.has_next_batch():
-        batch_data, batch_label = TRAIN_DATASET.next_batch(augment=True)
+        #batch_data, batch_label = TRAIN_DATASET.next_batch(augment=FLAGS.aug=='all')
+        batch_data, batch_label = TRAIN_DATASET.next_batch(augment=False)
         #batch_data = provider.random_point_dropout(batch_data)
         bsize = batch_data.shape[0]
         cur_batch_data[0:bsize,...] = batch_data

@@ -108,6 +108,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
             idx: (batch_size, npoint, nsample) int32 -- indices for local regions
     '''
     data_format = 'NCHW' if use_nchw else 'NHWC'
+    print('\n\n')
     with tf.variable_scope(scope) as sc:
         # Sample and Grouping
         if group_all:
@@ -124,6 +125,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
                                         bn=bn, is_training=is_training,
                                         scope='conv%d'%(i), bn_decay=bn_decay,
                                         data_format=data_format)
+            print('conv2d: %s'%(new_points.shape.as_list()))
         if use_nchw: new_points = tf.transpose(new_points, [0,2,3,1])
 
         # Pooling in Local Regions
@@ -155,6 +157,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
             if use_nchw: new_points = tf.transpose(new_points, [0,2,3,1])
 
         new_points = tf.squeeze(new_points, [2]) # (batch_size, npoints, mlp2[-1])
+        print('\n\n')
         return new_xyz, new_points, idx
 
 def pointnet_sa_module_msg(xyz, points, npoint, radius_list, nsample_list, mlp_list, is_training, bn_decay, scope, bn=True, use_xyz=True, use_nchw=False):

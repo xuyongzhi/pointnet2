@@ -1,5 +1,6 @@
 *.pyc
-log
+*.swp
+log*
 data
 *.ropeproject*
 dump

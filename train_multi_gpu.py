@@ -38,6 +38,7 @@ parser.add_argument('--decay_step', type=int, default=200000, help='Decay step f
 parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.7]')
 parser.add_argument('--normal', action='store_true', help='Whether to use normal information')
 parser.add_argument('--aug', type=str, default='all', help='aug types')
+parser.add_argument('--single_scale', action='store_true', help='vanila pointnet')
 FLAGS = parser.parse_args()
 
 EPOCH_CNT = 0
@@ -174,7 +175,11 @@ def train():
             # -------------------------------------------
             # Allocating variables on CPU first will greatly accelerate multi-gpu training.
             # Ref: https://github.com/kuza55/keras-extras/issues/21
-            MODEL.get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
+            if FLAGS.single_scale:
+              get_model_f = MODEL.get_model_single_scale
+            else:
+              get_model_f = MODEL.get_model
+            get_model_f(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
 
             tower_grads = []
             pred_gpu = []
@@ -188,7 +193,7 @@ def train():
                         label_batch = tf.slice(labels_pl,
                             [i*DEVICE_BATCH_SIZE], [DEVICE_BATCH_SIZE])
 
-                        pred, end_points = MODEL.get_model(pc_batch,
+                        pred, end_points = get_model_f(pc_batch,
                             is_training=is_training_pl, bn_decay=bn_decay)
 
                         MODEL.get_loss(pred, label_batch, end_points)
@@ -253,7 +258,7 @@ def train():
             eval_one_epoch(sess, ops, test_writer)
 
             # Save the variables to disk.
-            if epoch % 10 == 0:
+            if epoch % 20 == 0:
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model-%d.ckpt"%(epoch)))
                 log_string("Model saved in file: %s" % save_path)
 

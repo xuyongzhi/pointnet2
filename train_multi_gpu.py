@@ -39,6 +39,7 @@ parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate fo
 parser.add_argument('--normal', action='store_true', help='Whether to use normal information')
 parser.add_argument('--aug', type=str, default='all', help='aug types')
 parser.add_argument('--single_scale', action='store_true', help='vanila pointnet')
+parser.add_argument('--no_shuffle', action='store_true', help='no shuffle')
 FLAGS = parser.parse_args()
 
 EPOCH_CNT = 0
@@ -75,14 +76,15 @@ HOSTNAME = socket.gethostname()
 NUM_CLASSES = 40
 
 # Shapenet official train/test split
+shuffle = not FLAGS.no_shuffle
 if FLAGS.normal:
     assert(NUM_POINT<=10000)
     DATA_PATH = os.path.join(ROOT_DIR, 'data/modelnet40_normal_resampled')
-    TRAIN_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='train', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE)
-    TEST_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='test', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE)
+    TRAIN_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='train', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE,shuffle=shuffle)
+    TEST_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='test', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE,shuffle=False)
 else:
     assert(NUM_POINT<=2048)
-    TRAIN_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=True)
+    TRAIN_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=shuffle)
     TEST_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=False)
 
 def log_string(out_str):

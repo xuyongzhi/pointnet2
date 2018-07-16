@@ -125,7 +125,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
                                         bn=bn, is_training=is_training,
                                         scope='conv%d'%(i), bn_decay=bn_decay,
                                         data_format=data_format)
-            print('conv2d: %s'%(new_points.shape.as_list()))
+            #print('conv2d: %s'%(new_points.shape.as_list()))
         if use_nchw: new_points = tf.transpose(new_points, [0,2,3,1])
 
         # Pooling in Local Regions
@@ -144,6 +144,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
             max_points = tf.reduce_max(new_points, axis=[2], keep_dims=True, name='maxpool')
             avg_points = tf.reduce_mean(new_points, axis=[2], keep_dims=True, name='avgpool')
             new_points = tf.concat([avg_points, max_points], axis=-1)
+        print('{} pooling: {}'.format(pooling, new_points.shape.as_list()))
 
         # [Optional] Further Processing
         if mlp2 is not None:

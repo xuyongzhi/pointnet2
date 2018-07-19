@@ -37,7 +37,7 @@ parser.add_argument('--optimizer', default='adam', help='adam or momentum [defau
 parser.add_argument('--decay_step', type=int, default=200000, help='Decay step for lr decay [default: 200000]')
 parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.7]')
 parser.add_argument('--normal', action='store_true', help='Whether to use normal information')
-parser.add_argument('--aug', type=str, default='all', help='aug types')
+parser.add_argument('--aug', type=str, default='A', help='aug types: A, N')
 parser.add_argument('--single_scale', action='store_true', help='vanila pointnet')
 parser.add_argument('--no_shuffle', action='store_true', help='no shuffle')
 parser.add_argument('--keep_prob', type=float, default=0.5, help='drop out keep prob rate')
@@ -60,12 +60,18 @@ DECAY_RATE = FLAGS.decay_rate
 
 MODEL = importlib.import_module(FLAGS.model) # import network module
 MODEL_FILE = os.path.join(ROOT_DIR, 'models', FLAGS.model+'.py')
-LOG_DIR = FLAGS.log_dir
+LOG_DIR = FLAGS.log_dir + '{}-Bs{}-Aug{}-Sf{}'.format(
+          '-SingeScale' if FLAGS.single_scale else '',
+          BATCH_SIZE, FLAGS.aug,
+          'N' if FLAGS.no_shuffle else 'Y')
+
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR)) # bkp of model def
 os.system('cp train.py %s' % (LOG_DIR)) # bkp of train procedure
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS)+'\n')
+METRIC_F = open(os.path.join(LOG_DIR, 'log_metric.txt'), 'w')
+METRIC_F.write(str(FLAGS)+'\n')
 
 BN_INIT_DECAY = 0.5
 BN_DECAY_DECAY_RATE = 0.5
@@ -79,6 +85,7 @@ NUM_CLASSES = 40
 # Shapenet official train/test split
 shuffle = not FLAGS.no_shuffle
 DATASET_FLAG = 'with_normal'
+DATASET_FLAG = 'ply_h5'
 if DATASET_FLAG=='with_normal':
     assert(NUM_POINT<=10000)
     DATA_PATH = os.path.join(ROOT_DIR, 'data/modelnet40_normal_resampled')
@@ -261,12 +268,16 @@ def train():
             sys.stdout.flush()
 
             train_one_epoch(sess, ops, train_writer)
-            eval_one_epoch(sess, ops, test_writer)
+            if epoch %5==0:
+              train_acc = eval_one_epoch(sess, ops, test_writer, eval_train=True)
+              test_acc = eval_one_epoch(sess, ops, test_writer)
+              METRIC_F.write('{}: {:.3f}/{:.3f}\n'.format(epoch, train_acc, test_acc))
+              METRIC_F.flush()
 
-            # Save the variables to disk.
-            if epoch % 20 == 0:
-                save_path = saver.save(sess, os.path.join(LOG_DIR, "model-%d.ckpt"%(epoch)))
-                log_string("Model saved in file: %s" % save_path)
+              # Save the variables to disk.
+              if epoch % 20 == 0:
+                  save_path = saver.save(sess, os.path.join(LOG_DIR, "model-%d.ckpt"%(epoch)))
+                  log_string("Model saved in file: %s" % save_path)
 
 
 def train_one_epoch(sess, ops, train_writer):
@@ -284,8 +295,7 @@ def train_one_epoch(sess, ops, train_writer):
     loss_sum = 0
     batch_idx = 0
     while TRAIN_DATASET.has_next_batch():
-        #batch_data, batch_label = TRAIN_DATASET.next_batch(augment=FLAGS.aug=='all')
-        batch_data, batch_label = TRAIN_DATASET.next_batch(augment=False)
+        batch_data, batch_label = TRAIN_DATASET.next_batch(augment=FLAGS.aug)
         #batch_data = provider.random_point_dropout(batch_data)
         bsize = batch_data.shape[0]
         cur_batch_data[0:bsize,...] = batch_data
@@ -313,13 +323,14 @@ def train_one_epoch(sess, ops, train_writer):
 
     TRAIN_DATASET.reset()
 
-def eval_one_epoch(sess, ops, test_writer):
+def eval_one_epoch(sess, ops, test_writer, eval_train=False):
     """ ops: dict mapping from string to tf ops """
     global EPOCH_CNT
     is_training = False
 
     # Make sure batch data is of same size
-    cur_batch_data = np.zeros((BATCH_SIZE,NUM_POINT,TEST_DATASET.num_channel()))
+    EVAL_DATASET = TEST_DATASET if not eval_train else TRAIN_DATASET
+    cur_batch_data = np.zeros((BATCH_SIZE,NUM_POINT,EVAL_DATASET.num_channel()))
     cur_batch_label = np.zeros((BATCH_SIZE), dtype=np.int32)
 
     total_correct = 0
@@ -333,8 +344,9 @@ def eval_one_epoch(sess, ops, test_writer):
     log_string(str(datetime.now()))
     log_string('---- EPOCH %03d EVALUATION ----'%(EPOCH_CNT))
 
-    while TEST_DATASET.has_next_batch():
-        batch_data, batch_label = TEST_DATASET.next_batch(augment=False)
+    while EVAL_DATASET.has_next_batch():
+        batch_data, batch_label = EVAL_DATASET.next_batch(augment='N')
+
         bsize = batch_data.shape[0]
         # for the last batch in the epoch, the bsize:end are from last batch
         cur_batch_data[0:bsize,...] = batch_data
@@ -357,12 +369,13 @@ def eval_one_epoch(sess, ops, test_writer):
             total_seen_class[l] += 1
             total_correct_class[l] += (pred_val[i] == l)
 
+    accuracy = total_correct / float(total_seen)
     log_string('eval mean loss: %f' % (loss_sum / float(batch_idx)))
     log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
     log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
     EPOCH_CNT += 1
 
-    TEST_DATASET.reset()
+    EVAL_DATASET.reset()
     return total_correct/float(total_seen)
 
 

@@ -105,8 +105,10 @@ class ModelNetH5Dataset(object):
             self.current_file_idx += 1
         return self._has_next_batch_in_file()
 
-    def next_batch(self, augment=False):
+    def next_batch(self, augment='A'):
         ''' returned dimension may be smaller than self.batch_size '''
+        assert augment=='A' or augment=='N'
+
         start_idx = self.batch_idx * self.batch_size
         end_idx = min((self.batch_idx+1) * self.batch_size, self.current_data.shape[0])
         bsize = end_idx - start_idx
@@ -114,7 +116,7 @@ class ModelNetH5Dataset(object):
         data_batch = self.current_data[start_idx:end_idx, 0:self.npoints, :].copy()
         label_batch = self.current_label[start_idx:end_idx].copy()
         self.batch_idx += 1
-        if augment: data_batch = self._augment_batch_data(data_batch)
+        if augment=='A': data_batch = self._augment_batch_data(data_batch)
         return data_batch, label_batch
 
 if __name__=='__main__':

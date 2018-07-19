@@ -7,7 +7,7 @@ Date: November 2017
 import numpy as np
 import tensorflow as tf
 
-ISSHOW = True
+ISSHOW = False
 
 def _variable_on_cpu(name, shape, initializer, use_fp16=False):
   """Helper to create a Variable stored on CPU memory.
@@ -627,9 +627,10 @@ def dropout(inputs,
     tensor variable
   """
   with tf.variable_scope(scope) as sc:
-    outputs = tf.cond(is_training,
-                      lambda: tf.nn.dropout(inputs, keep_prob, noise_shape),
-                      lambda: inputs)
+    outputs = tf.cond(is_training, lambda: tf.nn.dropout(inputs, keep_prob, noise_shape), lambda: inputs)
+    #outputs = tf.cond(is_training,
+    #                  lambda: tf.nn.dropout(inputs, keep_prob, noise_shape),
+    #                  lambda: inputs)
     if ISSHOW:
       print('dropout  :{}'.format(keep_prob))
     return outputs

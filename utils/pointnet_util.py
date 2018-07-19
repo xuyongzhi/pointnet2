@@ -144,7 +144,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
             max_points = tf.reduce_max(new_points, axis=[2], keep_dims=True, name='maxpool')
             avg_points = tf.reduce_mean(new_points, axis=[2], keep_dims=True, name='avgpool')
             new_points = tf.concat([avg_points, max_points], axis=-1)
-        print('{} pooling: {}'.format(pooling, new_points.shape.as_list()))
+        #print('{} pooling: {}'.format(pooling, new_points.shape.as_list()))
 
         # [Optional] Further Processing
         if mlp2 is not None:

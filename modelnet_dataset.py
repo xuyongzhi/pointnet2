@@ -21,25 +21,26 @@ def pc_normalize(pc):
     return pc
 
 class ModelNetDataset():
-    def __init__(self, root, batch_size = 32, npoints = 1024, split='train', normalize=True, normal_channel=False, modelnet10=False, cache_size=15000, shuffle=None):
+    def __init__(self, root, batch_size = 32, npoints = 1024, split='train', normalize=True, normal_channel=False, modelnet10=False, cache_size=15000, shuffle=None, use_normal=True):
         self.root = root
         self.batch_size = batch_size
         self.npoints = npoints
         self.normalize = normalize
+        self.use_normal = use_normal
         if modelnet10:
             self.catfile = os.path.join(self.root, 'modelnet10_shape_names.txt')
         else:
             self.catfile = os.path.join(self.root, 'shape_names.txt')
         self.cat = [line.rstrip() for line in open(self.catfile)]
-        self.classes = dict(zip(self.cat, range(len(self.cat))))  
+        self.classes = dict(zip(self.cat, range(len(self.cat))))
         self.normal_channel = normal_channel
-        
+
         shape_ids = {}
         if modelnet10:
-            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_train.txt'))] 
+            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_train.txt'))]
             shape_ids['test']= [line.rstrip() for line in open(os.path.join(self.root, 'modelnet10_test.txt'))]
         else:
-            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_train.txt'))] 
+            shape_ids['train'] = [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_train.txt'))]
             shape_ids['test']= [line.rstrip() for line in open(os.path.join(self.root, 'modelnet40_test.txt'))]
         assert(split=='train' or split=='test')
         shape_names = ['_'.join(x.split('_')[0:-1]) for x in shape_ids[split]]
@@ -64,7 +65,7 @@ class ModelNetDataset():
         else:
             rotated_data = provider.rotate_point_cloud(batch_data)
             rotated_data = provider.rotate_perturbation_point_cloud(rotated_data)
-    
+
         jittered_data = provider.random_scale_point_cloud(rotated_data[:,:,0:3])
         jittered_data = provider.shift_point_cloud(jittered_data)
         jittered_data = provider.jitter_point_cloud(jittered_data)
@@ -72,7 +73,7 @@ class ModelNetDataset():
         return provider.shuffle_points(rotated_data)
 
 
-    def _get_item(self, index): 
+    def _get_item(self, index):
         if index in self.cache:
             point_set, cls = self.cache[index]
         else:
@@ -89,7 +90,7 @@ class ModelNetDataset():
             if len(self.cache) < self.cache_size:
                 self.cache[index] = (point_set, cls)
         return point_set, cls
-        
+
     def __getitem__(self, index):
         return self._get_item(index)
 
@@ -125,8 +126,10 @@ class ModelNetDataset():
             batch_label[i] = cls
         self.batch_idx += 1
         if augment: batch_data = self._augment_batch_data(batch_data)
+        if not self.use_normal:
+          batch_data = batch_data[...,0:3]
         return batch_data, batch_label
-    
+
 if __name__ == '__main__':
     d = ModelNetDataset(root = '../data/modelnet40_normal_resampled', split='test')
     print(d.shuffle)

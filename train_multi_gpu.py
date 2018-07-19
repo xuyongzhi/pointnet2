@@ -40,6 +40,7 @@ parser.add_argument('--normal', action='store_true', help='Whether to use normal
 parser.add_argument('--aug', type=str, default='all', help='aug types')
 parser.add_argument('--single_scale', action='store_true', help='vanila pointnet')
 parser.add_argument('--no_shuffle', action='store_true', help='no shuffle')
+parser.add_argument('--keep_prob', type=float, default=0.5, help='drop out keep prob rate')
 FLAGS = parser.parse_args()
 
 EPOCH_CNT = 0
@@ -77,11 +78,12 @@ NUM_CLASSES = 40
 
 # Shapenet official train/test split
 shuffle = not FLAGS.no_shuffle
-if FLAGS.normal:
+DATASET_FLAG = 'with_normal'
+if DATASET_FLAG=='with_normal':
     assert(NUM_POINT<=10000)
     DATA_PATH = os.path.join(ROOT_DIR, 'data/modelnet40_normal_resampled')
-    TRAIN_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='train', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE,shuffle=shuffle)
-    TEST_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='test', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE,shuffle=False)
+    TRAIN_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='train', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE,shuffle=shuffle, use_normal=FLAGS.normal)
+    TEST_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='test', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE,shuffle=False, use_normal=FLAGS.normal)
 else:
     assert(NUM_POINT<=2048)
     TRAIN_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=shuffle)
@@ -181,7 +183,8 @@ def train():
               get_model_f = MODEL.get_model_single_scale
             else:
               get_model_f = MODEL.get_model
-            get_model_f(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
+            get_model_f(pointclouds_pl, is_training_pl, bn_decay=bn_decay,
+                        keep_prob = FLAGS.keep_prob)
 
             tower_grads = []
             pred_gpu = []
@@ -196,7 +199,8 @@ def train():
                             [i*DEVICE_BATCH_SIZE], [DEVICE_BATCH_SIZE])
 
                         pred, end_points = get_model_f(pc_batch,
-                            is_training=is_training_pl, bn_decay=bn_decay)
+                            is_training=is_training_pl, bn_decay=bn_decay,
+                            keep_prob = FLAGS.keep_prob)
 
                         MODEL.get_loss(pred, label_batch, end_points)
                         losses = tf.get_collection('losses', scope)

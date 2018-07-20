@@ -113,7 +113,7 @@ class ModelNetDataset():
     def has_next_batch(self):
         return self.batch_idx < self.num_batches
 
-    def next_batch(self, augment=False):
+    def next_batch(self, augment='A'):
         ''' returned dimension may be smaller than self.batch_size '''
         start_idx = self.batch_idx * self.batch_size
         end_idx = min((self.batch_idx+1) * self.batch_size, len(self.datapath))
@@ -125,7 +125,7 @@ class ModelNetDataset():
             batch_data[i] = ps
             batch_label[i] = cls
         self.batch_idx += 1
-        if augment: batch_data = self._augment_batch_data(batch_data)
+        if augment=='A': batch_data = self._augment_batch_data(batch_data)
         if not self.use_normal:
           batch_data = batch_data[...,0:3]
         return batch_data, batch_label

@@ -29,7 +29,7 @@ parser.add_argument('--num_gpus', type=int, default=1, help='How many gpus to us
 parser.add_argument('--model', default='pointnet2_cls_ssg', help='Model name [default: pointnet2_cls_ssg]')
 parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
 parser.add_argument('--num_point', type=int, default=1024, help='Point Number [default: 1024]')
-parser.add_argument('--max_epoch', type=int, default=251, help='Epoch to run [default: 251]')
+parser.add_argument('--max_epoch', type=int, default=151, help='Epoch to run [default: 251]')
 parser.add_argument('--batch_size', type=int, default=32, help='Batch Size during training [default: 32]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
@@ -41,6 +41,7 @@ parser.add_argument('--aug', type=str, default='A', help='aug types: A, N')
 parser.add_argument('--single_scale', action='store_true', help='vanila pointnet')
 parser.add_argument('--no_shuffle', action='store_true', help='no shuffle')
 parser.add_argument('--keep_prob', type=float, default=0.5, help='drop out keep prob rate')
+parser.add_argument('--ds', type=str, default='ply', help='ply norm')
 FLAGS = parser.parse_args()
 
 EPOCH_CNT = 0
@@ -60,10 +61,13 @@ DECAY_RATE = FLAGS.decay_rate
 
 MODEL = importlib.import_module(FLAGS.model) # import network module
 MODEL_FILE = os.path.join(ROOT_DIR, 'models', FLAGS.model+'.py')
-LOG_DIR = FLAGS.log_dir + '{}-Bs{}-Aug{}-Sf{}'.format(
+LOG_DIR = FLAGS.log_dir + '{}-Bs{}-Aug{}-Sf{}-Kp{}-DS{}-Np{}'.format(
           '-SingeScale' if FLAGS.single_scale else '',
           BATCH_SIZE, FLAGS.aug,
-          'N' if FLAGS.no_shuffle else 'Y')
+          'N' if FLAGS.no_shuffle else 'Y',
+          int(FLAGS.keep_prob*10),
+          FLAGS.ds,
+          FLAGS.num_point)
 
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 os.system('cp %s %s' % (MODEL_FILE, LOG_DIR)) # bkp of model def
@@ -84,9 +88,9 @@ NUM_CLASSES = 40
 
 # Shapenet official train/test split
 shuffle = not FLAGS.no_shuffle
-DATASET_FLAG = 'with_normal'
-DATASET_FLAG = 'ply_h5'
-if DATASET_FLAG=='with_normal':
+DATASET_FLAG = FLAGS.ds
+assert DATASET_FLAG == 'ply' or DATASET_FLAG=='norm'
+if DATASET_FLAG=='norm':
     assert(NUM_POINT<=10000)
     DATA_PATH = os.path.join(ROOT_DIR, 'data/modelnet40_normal_resampled')
     TRAIN_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='train', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE,shuffle=shuffle, use_normal=FLAGS.normal)
